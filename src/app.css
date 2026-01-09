@@ -1,0 +1,45 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Renren CSS变量 */
+:root {
+  --renren-blue: #005EAC;
+  --renren-border: #e5e7eb;
+  --renren-bg: #f8f9fa;
+}
+
+@layer base {
+  * {
+    border-color: #e5e7eb;
+  }
+  body {
+    background-color: #f8f9fa;
+    color: #111827;
+    font-family: "Microsoft YaHei", "微软雅黑", Arial, sans-serif;
+  }
+}
+
+@layer components {
+  .renren-container {
+    max-width: 80rem;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+  }
+  
+  .renren-card {
+    background-color: white;
+    border-radius: 0.5rem;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    margin-bottom: 1rem; /* 添加卡片间距 */
+  }
+  
+  .renren-card:last-child {
+    margin-bottom: 0;
+  }
+}
