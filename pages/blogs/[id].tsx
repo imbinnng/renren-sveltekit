@@ -69,6 +69,57 @@ const BlogDetailPage: React.FC = () => {
     }
   };
 
+  const renderInlineMarkdown = (text: string) => {
+    // 处理内联代码 (`
+    let processedText = text;
+    const parts: JSX.Element[] = [];
+    
+    // 分割各种Markdown语法
+    const segments = processedText.split(/(\*\*[^*]+\*\*|__[^_]+__|\*[^*]+\*|_[^_]+_|`[^`]+`)/);
+    
+    return segments.map((segment, index) => {
+      if (segment.startsWith('**') && segment.endsWith('**')) {
+        // 加粗 **text**
+        return (
+          <strong key={index} className="font-bold text-gray-900">
+            {segment.slice(2, -2)}
+          </strong>
+        );
+      } else if (segment.startsWith('__') && segment.endsWith('__')) {
+        // 加粗 __text__
+        return (
+          <strong key={index} className="font-bold text-gray-900">
+            {segment.slice(2, -2)}
+          </strong>
+        );
+      } else if (segment.startsWith('*') && segment.endsWith('*') && segment.length > 2) {
+        // 斜体 *text*
+        return (
+          <em key={index} className="italic text-gray-700">
+            {segment.slice(1, -1)}
+          </em>
+        );
+      } else if (segment.startsWith('_') && segment.endsWith('_') && segment.length > 2) {
+        // 斜体 _text_
+        return (
+          <em key={index} className="italic text-gray-700">
+            {segment.slice(1, -1)}
+          </em>
+        );
+      } else if (segment.startsWith('`') && segment.endsWith('`')) {
+        // 内联代码 `code`
+        return (
+          <code key={index} className="bg-gray-100 text-gray-800 px-1 py-0.5 rounded text-sm font-mono">
+            {segment.slice(1, -1)}
+          </code>
+        );
+      } else {
+        // 普通文本
+        return <span key={index}>{segment}</span>;
+      }
+    });
+  };
+
   const renderContent = (content: string) => {
     const lines = content.split('\n');
     const elements: JSX.Element[] = [];
@@ -133,24 +184,12 @@ const BlogDetailPage: React.FC = () => {
         // 空行
         elements.push(<div key={`br-${index}`} className="h-4" />);
       } else {
-        // 普通段落，支持内联代码
-        const processedLine = line.split(/(`+[^`]+`+)/).map((part, partIndex) => {
-          if (part.startsWith('`') && part.endsWith('`')) {
-            // 内联代码
-            return (
-              <code key={`inline-${partIndex}`} className="bg-gray-100 text-gray-800 px-1 py-0.5 rounded text-sm font-mono">
-                {part.replace(/`/g, '')}
-              </code>
-            );
-          } else {
-            // 普通文本
-            return part;
-          }
-        });
-
+        // 普通段落，支持各种Markdown语法
+        const processedContent = renderInlineMarkdown(line);
+        
         elements.push(
           <p key={`p-${index}`} className="mb-4 leading-relaxed text-gray-700">
-            {processedLine}
+            {processedContent}
           </p>
         );
       }
