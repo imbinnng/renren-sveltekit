@@ -190,9 +190,22 @@ const BlogDetailPage: React.FC = () => {
         <div className="mb-6">
           <button 
             onClick={() => router.back()}
-            className="text-blue-600 hover:text-blue-800 flex items-center space-x-2"
+            className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors group"
+            title="返回博客列表"
           >
-            <span>← 返回博客列表</span>
+            <svg 
+              className="w-5 h-5 text-gray-600 group-hover:text-gray-800 transition-colors" 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                strokeWidth={2} 
+                d="M10 19l-7-7m0 0l7-7m-7 7h18" 
+              />
+            </svg>
           </button>
         </div>
 
