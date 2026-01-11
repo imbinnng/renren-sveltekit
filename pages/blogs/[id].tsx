@@ -263,6 +263,321 @@ const useApi = (url) => {
 
 希望每个人都能在自己的生活中找到那些闪光的时刻，让平凡的日子变得不再平凡。
     `.trim()
+  },
+  7: {
+    title: '技术分享',
+    category: '技术',
+    tags: ['React', 'Hooks', '状态管理'],
+    likes: 45,
+    comments: 9,
+    shares: 6,
+    createdAt: '2023-12-19',
+    readTime: '4分钟',
+    author: {
+      name: '技术大牛',
+      avatar: '技',
+      avatarColor: 'from-blue-600 to-blue-700'
+    },
+    content: `
+分享一个很实用的React Hook，可以大大简化状态管理。这个Hook叫做useLocalStorage，能够帮助我们轻松地在组件之间共享状态，并且数据会持久化到浏览器的localStorage中。
+
+在开发React应用时，我们经常需要管理组件状态。有时候这些状态需要在多个组件之间共享，或者需要在页面刷新后仍然保持。传统的做法是使用Redux或Context API，但这些方案对于简单的状态管理来说有些过于复杂。
+
+于是我开发了一个自定义Hook useLocalStorage，它结合了useState和localStorage的优点，提供了一个简洁而强大的解决方案。
+
+这个Hook的基本用法如下：
+
+\`\`\`javascript
+import { useLocalStorage } from './hooks/useLocalStorage';
+
+function Counter() {
+  const [count, setCount] = useLocalStorage('counter', 0);
+  
+  return (
+    <div>
+      <p>Count: {count}</p>
+      <button onClick={() => setCount(count + 1)}>Increment</button>
+    </div>
+  );
+}
+\`\`\`
+
+useLocalStorage的实现原理其实很简单。它接受两个参数：localStorage的键名和初始值。当组件第一次渲染时，它会从localStorage中读取值；如果localStorage中没有对应的值，就使用提供的初始值。
+
+下面是useLocalStorage的完整实现：
+
+\`\`\`javascript
+import { useState, useEffect } from 'react';
+
+export function useLocalStorage(key, initialValue) {
+  // 获取初始值
+  const [storedValue, setStoredValue] = useState(() => {
+    try {
+      const item = window.localStorage.getItem(key);
+      return item ? JSON.parse(item) : initialValue;
+    } catch (error) {
+      console.error('Error reading from localStorage:', error);
+      return initialValue;
+    }
+  });
+
+  // 更新localStorage中的值
+  const setValue = (value) => {
+    try {
+      const valueToStore = value instanceof Function ? value(storedValue) : value;
+      setStoredValue(valueToStore);
+      window.localStorage.setItem(key, JSON.stringify(valueToStore));
+    } catch (error) {
+      console.error('Error saving to localStorage:', error);
+    }
+  };
+
+  return [storedValue, setValue];
+}
+\`\`\`
+
+这个Hook有很多实用的场景。比如用户偏好设置、购物车数据、表单草稿保存等。它不仅解决了数据持久化的问题，还保持了React Hooks的简洁性。
+
+我还在这个基础上做了一些扩展。比如useLocalStorageWithExpire，它支持为存储的数据设置过期时间：
+
+\`\`\`javascript
+export function useLocalStorageWithExpire(key, initialValue, expireInHours = 24) {
+  const [storedValue, setStoredValue] = useState(() => {
+    try {
+      const item = window.localStorage.getItem(key);
+      if (!item) return initialValue;
+      
+      const parsedItem = JSON.parse(item);
+      const now = new Date().getTime();
+      
+      if (parsedItem.expire && now > parsedItem.expire) {
+        window.localStorage.removeItem(key);
+        return initialValue;
+      }
+      
+      return parsedItem.value;
+    } catch (error) {
+      console.error('Error reading from localStorage:', error);
+      return initialValue;
+    }
+  });
+
+  const setValue = (value) => {
+    try {
+      const now = new Date().getTime();
+      const expire = now + (expireInHours * 60 * 60 * 1000);
+      
+      const valueToStore = value instanceof Function ? value(storedValue) : value;
+      setStoredValue(valueToStore);
+      
+      window.localStorage.setItem(key, JSON.stringify({
+        value: valueToStore,
+        expire: expire
+      }));
+    } catch (error) {
+      console.error('Error saving to localStorage:', error);
+    }
+  };
+
+  return [storedValue, setValue];
+}
+\`\`\`
+
+另一个有用的变种是useLocalStorageObject，它专门用于存储复杂对象，并提供了更深度的操作方法：
+
+\`\`\`javascript
+export function useLocalStorageObject(key, initialValue) {
+  const [storedObject, setStoredObject] = useLocalStorage(key, initialValue);
+  
+  const updateProperty = (property, value) => {
+    setStoredObject(prev => ({
+      ...prev,
+      [property]: value
+    }));
+  };
+  
+  const removeProperty = (property) => {
+    setStoredObject(prev => {
+      const newObj = { ...prev };
+      delete newObj[property];
+      return newObj;
+    });
+  };
+  
+  return [storedObject, setStoredObject, updateProperty, removeProperty];
+}
+\`\`\`
+
+这些Hooks在项目中得到了广泛应用。比如在用户设置页面，我用useLocalStorage来保存用户的主题偏好和语言设置；在购物车组件中，用它来保存用户的购物车数据；在表单组件中，用它来实现自动保存草稿功能。
+
+使用这些自定义Hook的好处是显而易见的：
+
+1. **代码复用性**：同一个Hook可以在多个组件中使用，避免了重复代码。
+2. **类型安全**：配合TypeScript使用时，可以获得完整的类型检查和智能提示。
+3. **测试友好**：由于Hook逻辑独立于组件，可以单独进行单元测试。
+4. **性能优化**：只有真正依赖localStorage的组件才会重新渲染。
+
+当然，这些Hook也有一些限制需要注意。比如localStorage是同步操作，对于大量数据可能会有性能问题。另外，在服务器端渲染时需要特殊处理，因为localStorage是浏览器特有的API。
+
+总的来说，通过合理使用自定义Hooks，我们可以大大简化状态管理的复杂度，让代码更加清晰和可维护。这正是React Hooks的魅力所在。
+    `.trim()
+  },
+  8: {
+    title: '电影评论',
+    category: '娱乐',
+    tags: ['电影', '评论', '观后感'],
+    likes: 23,
+    comments: 6,
+    shares: 3,
+    createdAt: '2023-12-18',
+    readTime: '3分钟',
+    author: {
+      name: '影评人',
+      avatar: '影',
+      avatarColor: 'from-pink-500 to-pink-600'
+    },
+    content: `
+最近看了一部很不错的电影《瞬息全宇宙》，分享一下观后感。这部电影不仅是一部科幻动作片，更是一部关于家庭、亲情和人生意义的深刻作品。
+
+影片讲述了一个普通的中年妇女伊芙琳，在自己经营的洗衣店面临税务审计的同时，突然被卷入一场跨越多重宇宙的冒险。她发现自己有无数个平行世界的版本，而只有她才能拯救所有宇宙免于毁灭。
+
+这部电影最打动我的是它对家庭关系的深刻描写。伊芙琳和她的丈夫威门之间有着复杂的情感，两人从年轻时的一见钟情到现在的麻木疏离，这种变化让观众感同身受。他们的女儿乔伊处于青春叛逆期，与母亲之间充满了矛盾和误解。
+
+导演通过多重宇宙的设定，巧妙地探讨了"如果当初"这个永恒的话题。在每个宇宙里，伊芙琳都有着不同的人生：有的是功夫巨星，有的是京剧名角，有的是厨师，有的甚至是个热狗。这些设定不仅带来了喜剧效果，更让观众思考选择与命运的关系。
+
+电影中的视觉效果令人惊叹。从功夫打斗到宇宙穿越，从温馨的家庭聚会到荒诞的热狗世界，每一个场景都充满了想象力和创意。特别是那些快速切换的镜头，完美地展现了多重宇宙的混乱与精彩。
+
+但真正让这部电影升华的是它的情感内核。在所有的冒险和奇幻设定背后，这是一个关于母爱、宽恕和理解的故事。伊芙琳逐渐学会了接纳自己，接纳家人，也学会了在这个混乱的世界中找到属于自己的平静。
+
+电影中有几场戏让我印象深刻。比如伊芙琳第一次使用宇宙穿越能力时的手足无措，那种既恐惧又兴奋的感觉表现得非常真实。还有她与威门在税务办公室的那场对话，平淡中蕴含着深厚的感情。
+
+影片的配乐也非常出色。从激烈的动作场面到温情的家庭时刻，音乐总是能够恰到好处地烘托气氛。特别是那首用来表现不同宇宙的主题曲，简单的旋律却蕴含着丰富的情感变化。
+
+这部电影让我思考了很多关于人生的问题。我们每个人都会面临选择，都会好奇如果当初做了不同的决定会是什么样子。但电影告诉我们，重要的不是选择了什么，而是在选择的道路上如何生活。
+
+伊芙琳的成长过程很有启发性。她从一个对生活失去希望的中年妇女，变成了一个敢于面对挑战、敢于表达爱的勇敢女性。这种转变不是因为获得了超能力，而是因为她重新找到了人生的意义。
+
+影片对文化冲突的描写也很到位。作为第一代移民，伊芙琳面临着传统文化的束缚和现代美国文化的冲击。她既要满足父母的期望，又要照顾女儿的感受，还要维持与丈夫的关系。这种多重压力让她濒临崩溃，但也正是这些挑战让她成长。
+
+电影的结局既温暖又充满希望。没有惊天动地的胜利，只有平凡生活中的相互理解和支持。这种处理方式让整个故事更加真实和感人。
+
+总的来说，《瞬息全宇宙》是一部值得一看再看的佳作。它不仅有精彩的视觉效果和紧张的剧情，更有深刻的情感内核。它告诉我们，即使在最混乱的时刻，爱依然是我们最强大的力量。
+
+如果你还没有看过这部电影，我强烈推荐你去看看。它不仅会给你带来视觉上的享受，更会给你带来情感上的共鸣和思考。
+    `.trim()
+  },
+  9: {
+    title: '健身日记',
+    category: '运动',
+    tags: ['健身', '运动', '健康'],
+    likes: 78,
+    comments: 14,
+    shares: 7,
+    createdAt: '2023-12-17',
+    readTime: '4分钟',
+    author: {
+      name: '健身达人',
+      avatar: '健',
+      avatarColor: 'from-orange-500 to-orange-600'
+    },
+    content: `
+坚持运动第100天！分享一下这100天来的变化和心得。这100天不仅是身体上的改变，更是生活习惯和思维方式的转变。
+
+三个月前，我还是一个典型的办公室一族。每天坐在电脑前超过8小时，下班后只想躺在沙发上。体重超标、精神不振、睡眠质量差，这些都是我当时的写照。一次体检让我意识到必须做出改变了。
+
+开始的第一周是最艰难的。我给自己定了一个简单的目标：每天运动30分钟，不要求强度，只要求坚持。这30分钟可以是快走、慢跑，或者是在家做一些简单的运动。即使是这样的小目标，我也几乎每天都要和自己作斗争。
+
+第二周开始，我慢慢增加了运动强度。从简单的有氧运动，到加入一些力量训练。我还下载了几个健身APP，跟着视频学习正确的动作姿势。这段时间最大的挑战是克服肌肉酸痛，每天都感觉像是被卡车碾过一样。
+
+到了第一个月结束的时候，我开始看到一些变化。体重下降了3公斤，睡眠质量明显改善，精神状态也好了很多。这些积极的变化给了我继续坚持下去的动力。
+
+第二个月，我开始尝试不同类型的运动。除了跑步和力量训练，我还加入了瑜伽和游泳。多样化的运动不仅让训练更有趣，也让身体得到了更全面的锻炼。我发现瑜伽特别适合办公室人群，能够有效缓解肩颈疼痛。
+
+在饮食方面，我也做了一些调整。不是严格节食，而是选择更健康的食物。增加了蔬菜和蛋白质的摄入，减少了加工食品和糖分的摄入。我还学会了看营养成分表，这对选择健康食品很有帮助。
+
+第三个月是最有成就感的时期。我的体能明显提升，以前跑5分钟就气喘吁吁，现在可以轻松跑30分钟。体重总共下降了10公斤，肌肉线条也开始显现。更重要的是，运动已经成为我生活的一部分，不再需要强迫自己。
+
+这100天中，我也遇到了不少挑战。有几次因为工作忙或者天气不好，差点想要放弃。但每次我都会告诉自己，运动就像吃饭睡觉一样，是生活必需品，而不是可有可无的选项。
+
+我总结了一些坚持运动的小技巧，希望对大家有帮助：
+
+1. **制定合理的目标**：不要一开始就定太高的目标，循序渐进最重要。
+2. **找到自己喜欢的运动**：只有自己喜欢的运动才能长期坚持。
+3. **记录运动数据**：记录能让你看到进步，增加成就感。
+4. **找个运动伙伴**：有人一起运动会更有动力。
+5. **准备运动装备**：好的装备能提升运动体验。
+6. **固定运动时间**：像安排会议一样安排运动时间。
+7. **设置奖励机制**：达到目标后给自己一些奖励。
+
+除了身体上的变化，我的心理状态也发生了很大变化。变得更加自信，更加乐观。面对困难时，我学会了坚持；面对压力时，我学会了通过运动来释放。
+
+运动还影响了我的其他方面。我开始更加注重休息和睡眠，学会了倾听身体的声音。在工作中，我的注意力和效率都有了明显提升。
+
+现在回想起来，这100天的投资是值得的。付出的是汗水和坚持，收获的是健康、自信和更好的生活质量。我计划继续坚持运动，让健康的生活方式成为一生的习惯。
+
+如果你也想开始运动，我的建议是：不要想太多，现在就开始。哪怕只是每天10分钟的快走，都是好的开始。记住，最好的运动时间就是现在，最好的运动方式就是你能坚持下去的方式。
+
+100天只是一个开始，未来的路还很长。但我相信，只要有坚持和耐心，我们都能成为更好的自己。
+    `.trim()
+  },
+  10: {
+    title: '摄影技巧',
+    category: '摄影',
+    tags: ['摄影', '技巧', '手机摄影'],
+    likes: 92,
+    comments: 18,
+    shares: 9,
+    createdAt: '2023-12-16',
+    readTime: '5分钟',
+    author: {
+      name: '摄影师',
+      avatar: '摄',
+      avatarColor: 'from-teal-500 to-teal-600'
+    },
+    content: `
+分享一些手机摄影的技巧，用普通的手机也能拍出大片效果。现在的手机摄像头越来越强大，只要掌握一些基本技巧，就能拍出令人惊艳的照片。
+
+首先要说的是构图技巧。构图是摄影的基础，好的构图能让普通的场景变得不平凡。最常用的是三分法则，就是把画面分成九宫格，把主体放在交叉点或线上。现在的手机相机都有网格线功能，一定要打开使用。
+
+引导线是另一个实用的构图技巧。利用道路、河流、建筑线条等自然元素，引导观众的视线到主体上。这种技巧特别适合拍摄风景照片，能够增加照片的深度和层次感。
+
+对称构图在建筑摄影中特别有效。寻找对称的建筑、反射的水面或者对称的装饰，能够创造出平衡而和谐的画面。有时候需要蹲下或者仰拍才能找到最佳的对称角度。
+
+光影是摄影的灵魂。最好的拍摄时间通常是一早一晚的黄金时刻，这时光线柔和，色彩温暖。中午阳光强烈时，可以考虑在阴影下拍摄，或者利用阴影创造有趣的对比。
+
+逆光拍摄能创造出梦幻般的效果。让太阳或其他光源在主体背后，可以拍摄到美丽的轮廓光和光斑。拍摄时要注意调整曝光补偿，避免主体过暗。现在的手机HDR功能在逆光拍摄时特别有用。
+
+微距拍摄能发现微观世界的美。现在的手机都有微距模式，可以拍摄花朵、昆虫、水珠等细节。拍摄时要注意保持稳定，尽量靠近主体，但不要超出对焦距离。
+
+人像拍摄有几个关键技巧。首先要注意光线，最好选择柔和的自然光。背景要简洁，避免杂乱的元素干扰主体。可以开启人像模式，让背景虚化效果更好。拍摄时让人物稍微侧身，这样更有立体感。
+
+风景摄影要注意层次感。前景、中景、远景都要考虑进去。可以找一个有趣的前景，比如树枝、花朵，增加画面的深度。地平线要平直，一般放在三分线的上三分之一或下三分之一处。
+
+街拍需要勇气和速度。最有效的方法是假装在拍其他东西，突然转向目标按快门。或者使用连拍模式，快速拍摄多张照片。选择有趣的人物或场景，等待最佳时机按下快门。
+
+夜景拍摄需要特殊技巧。首先要保持手机稳定，最好使用三脚架。如果手拍，可以靠在墙上或者其他稳定物上。开启夜景模式，延长曝光时间。拍摄城市夜景时，可以尝试车流光轨效果。
+
+后期处理能让好照片变得更出色。有很多优秀的修图APP，比如Snapseed、VSCO、Lightroom Mobile等。但后期处理要适度，保持自然最重要。基本调整包括亮度、对比度、饱和度，以及裁剪和校正。
+
+我总结了几个常用的后期处理技巧：
+
+1. **调整曝光**：让照片的明暗更加平衡
+2. **增强对比度**：让照片更有层次感
+3. **调整色彩饱和度**：让色彩更加鲜艳但不失真
+4. **锐化处理**：让细节更加清晰
+5. **添加滤镜**：营造特定的氛围和风格
+6. **裁剪调整**：改善构图和比例
+
+创意拍摄能让你的照片与众不同。尝试不同的角度，比如俯拍、仰拍、倒影拍摄。利用慢门拍摄流水、车流等运动轨迹。尝试多重曝光，或者通过镜子、玻璃等反射物创造有趣的效果。
+
+拍摄后要学会整理和分享。按照日期、地点或者主题分类整理照片，这样更容易找到想要的照片。分享到社交媒体时，配上有趣的描述，让更多人欣赏你的作品。
+
+最重要的是保持好奇心和创造力。摄影不仅是一种技术，更是一种看待世界的方式。用心观察生活中的美好瞬间，用镜头记录下那些感动的时刻。
+
+记住，最好的相机就是随身携带的那一部。不要因为设备限制而放弃拍摄的机会。即使在最普通的地方，也能发现不平凡的美。
+
+希望这些技巧能帮助你拍出更好的照片。记住，摄影是一门需要不断学习和实践的技能，多拍多练，才能不断提高。祝你拍摄愉快！
+    `.trim()
   }
 };
 
