@@ -1,9 +1,4 @@
 {
-  "buildCommand": "npm run build",
-  "framework": "sveltekit",
-  "functions": {
-    ".svelte-kit/output/server/index.js": {
-      "runtime": "nodejs20.x"
-    }
-  }
+  "buildCommand": "npm run build"
+  "framework": "sveltekit"
 }
